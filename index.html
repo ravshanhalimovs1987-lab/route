@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Где наряд</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root{
+    --bg: var(--tg-theme-bg-color, #ffffff);
+    --text: var(--tg-theme-text-color, #1b1b1b);
+    --hint: var(--tg-theme-hint-color, #8a8a8a);
+    --card: var(--tg-theme-secondary-bg-color, #f2f2f2);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:18px 16px 28px;background:var(--bg);color:var(--text);
+       font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif}
+  .head{background:var(--card);border-radius:14px;padding:14px 16px;margin-bottom:18px}
+  .code{font-size:20px;font-weight:600}
+  .meta{font-size:14px;color:var(--hint);margin-top:4px;line-height:1.5}
+  .due{display:inline-block;margin-top:8px;font-size:13px;padding:3px 10px;border-radius:20px;background:#e1f5ee;color:#085041}
+  .due.late{background:#fcebeb;color:#a32d2d}
+  .st{display:flex;align-items:flex-start;gap:14px;position:relative;padding:12px 0}
+  .dot{width:30px;height:30px;border-radius:50%;position:relative;flex:none;
+       display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px;z-index:1}
+  .ring{position:absolute;inset:0;border-radius:50%;animation:pulse 1.4s ease-out infinite;z-index:-1}
+  .now .dot{animation:blink 1s ease-in-out infinite}
+  .line{position:absolute;left:13.5px;top:42px;width:3px;bottom:-12px}
+  .name{font-size:16px;line-height:1.3}
+  .now .name{font-weight:600}
+  .todo .name{color:var(--hint)}
+  .sub{font-size:13px;color:var(--hint);margin-top:2px}
+  .now .sub{color:var(--text)}
+  @keyframes pulse{0%{transform:scale(1);opacity:.85}70%{transform:scale(2.3);opacity:0}100%{opacity:0}}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+</style>
+</head>
+<body>
+<div class="head">
+  <div class="code" id="code">Наряд</div>
+  <div class="meta" id="meta"></div>
+  <div id="due"></div>
+</div>
+<div id="route"></div>
+
+<script>
+  const tg = window.Telegram && Telegram.WebApp;
+  if (tg) { tg.ready(); tg.expand(); }
+
+  const q = new URLSearchParams(location.search);
+  const code = q.get('o') || '';
+  const work = q.get('w') || '';
+  const tech = q.get('t') || 'техник';
+  const mill = q.get('m') || '';
+  const fit  = parseInt(q.get('f') || '0', 10);
+  const due  = q.get('d') || '';
+  const cur  = Math.max(0, Math.min(5, parseInt(q.get('s') || '0', 10)));
+
+  const STAGES = [
+    {n:'Врач',                 d:'Скан отправлен',              c:'#534AB7', i:'🦷'},
+    {n:'Техник · ' + tech,     d:'Моделирование',               c:'#1D9E75', i:'🛠'},
+    {n:'Фрезерный центр' + (mill ? ' · ' + mill : ''), d:'Фрезеровка', c:'#D85A30', i:'🏭'},
+    {n:'Примерка в клинике',   d: fit ? 'Примерка ' + fit : 'Примерка у врача', c:'#378ADD', i:'🪥'},
+    {n:'Ресепшн',              d:'Работа готова, звонок пациенту', c:'#D4537E', i:'📞'},
+    {n:'Сдана',                d:'Пациент получил работу',      c:'#639922', i:'🎉'}
+  ];
+
+  document.getElementById('code').textContent = 'Наряд ' + code;
+  document.getElementById('meta').textContent = work;
+  if (due) {
+    const late = cur < 5 && new Date(due.replace(' ', 'T')) < new Date();
+    document.getElementById('due').innerHTML =
+      '<span class="due' + (late ? ' late' : '') + '">' + (late ? 'Просрочен · срок ' : 'Срок ') + due + '</span>';
+  }
+
+  document.getElementById('route').innerHTML = STAGES.map((s, k) => {
+    const state = k < cur ? 'done' : (k === cur ? 'now' : 'todo');
+    const color = k <= cur ? s.c : '#C9C7BF';
+    const line = k < STAGES.length - 1
+      ? '<div class="line" style="background:' + (k < cur ? s.c : '#DDDBD3') + '"></div>' : '';
+    const ring = state === 'now' && k < 5 ? '<span class="ring" style="background:' + s.c + '"></span>' : '';
+    const icon = state === 'done' ? '✓' : s.i;
+    const sub = (state === 'now' && k < 5 ? 'Сейчас здесь · ' : '') + s.d;
+    return '<div class="st ' + state + '">' + line +
+      '<div class="dot" style="background:' + color + '">' + ring + icon + '</div>' +
+      '<div><div class="name">' + s.n + '</div><div class="sub">' + sub + '</div></div></div>';
+  }).join('');
+</script>
+</body>
+</html>
